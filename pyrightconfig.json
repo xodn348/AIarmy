@@ -1,0 +1,7 @@
+{
+  "include": ["airarmy"],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "venvPath": ".",
+  "reportMissingImports": false
+}
