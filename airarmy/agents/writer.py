@@ -31,7 +31,14 @@ class WriterAgent(BaseAgent):
     role = "Content & Technical Writer"
     model = config.SPECIALIST_MODEL
     system_prompt = WRITER_SYSTEM
-    allowed_tools = ["file_read", "file_write"]
+    allowed_tools = [
+        "file_read",
+        "file_write",
+        "file_rename",
+        "glob_search",
+        "grep_search",
+        "directory_list",
+    ]
 
     def describe(self) -> str:
         return "Writes documentation, blog posts, emails, and technical content."

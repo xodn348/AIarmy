@@ -32,7 +32,26 @@ class DeveloperAgent(BaseAgent):
     role = "Senior Software Engineer"
     model = config.SPECIALIST_MODEL
     system_prompt = DEVELOPER_SYSTEM
-    allowed_tools = ["file_read", "file_write", "shell_exec", "git_ops"]
+    allowed_tools = [
+        "file_read",
+        "file_write",
+        "file_delete",
+        "file_rename",
+        "shell_exec",
+        "git_init",
+        "git_status",
+        "git_diff",
+        "git_add",
+        "git_commit",
+        "git_push",
+        "git_clone",
+        "git_log",
+        "glob_search",
+        "grep_search",
+        "directory_list",
+        "package_install",
+        "env_read",
+    ]
 
     def describe(self) -> str:
         return "Writes code, reviews PRs, debugs issues, handles git operations."

@@ -40,20 +40,54 @@ Built on research of why 95% of AI agent deployments fail:
 
 ## Quick Start
 
+### Option 1: Claude Pro/Team Subscription ($20-100/month)
+
 ```bash
 # 1. Clone and install
 git clone https://github.com/xodn348/AIarmy.git
 cd AIarmy
 pip install -e .
 
-# 2. Configure
+# 2. Configure with session key
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env:
+#   AUTH_MODE=session_key
+#   CLAUDE_SESSION_KEY=<your session key from claude.ai>
 
-# 3. Launch interactive mode
+# Get session key:
+# 1. Go to claude.ai and login
+# 2. Open DevTools (F12) → Application/Storage → Cookies
+# 3. Copy value of "sessionKey" cookie (sk-ant-sid01-...)
+
+# 3. Launch
+airarmy
+```
+
+### Option 2: Official API Key (Pay-as-you-go)
+
+```bash
+# 1. Clone and install
+git clone https://github.com/xodn348/AIarmy.git
+cd AIarmy
+pip install -e .
+
+# 2. Configure with API key
+cp .env.example .env
+# Edit .env:
+#   AUTH_MODE=api_key
+#   ANTHROPIC_API_KEY=<key from console.anthropic.com>
+
+# 3. Launch
+airarmy
+```
+
+### Usage
+
+```bash
+# Interactive mode
 airarmy
 
-# Or run a single task
+# Single tasks
 airarmy ask "Write a Python function to parse JSON safely"
 airarmy ask "Research the latest MCP protocol updates"
 airarmy ask "Review this code for security issues: <paste code>"
@@ -72,16 +106,65 @@ In interactive mode:
 | `clear` | Clear conversation history |
 | `exit` | Quit |
 
+## 🛠️ Tools
+
+AIarmy agents have access to 20+ development tools:
+
+### File Operations (4 tools)
+- `file_read` - Read file contents
+- `file_write` - Write to files (HITL)
+- `file_delete` - Delete files (HITL)
+- `file_rename` - Rename/move files (HITL)
+
+### Shell & Process (1 tool)
+- `shell_exec` - Execute shell commands (HITL)
+
+### Git Operations (8 tools)
+- `git_init` - Initialize repository
+- `git_status` - Show status
+- `git_diff` - Show changes
+- `git_add` - Stage files
+- `git_commit` - Commit changes
+- `git_push` - Push to remote (HITL)
+- `git_clone` - Clone repository (HITL)
+- `git_log` - Show commit history
+
+### Web (2 tools)
+- `web_search` - Search the web (DuckDuckGo)
+- `web_fetch` - Fetch URL content
+
+### Search & Discovery (3 tools)
+- `glob_search` - Find files by pattern
+- `grep_search` - Search file contents
+- `directory_list` - List directory contents
+
+### System (2 tools)
+- `package_install` - Install packages (HITL)
+- `env_read` - Read environment variables
+
+**HITL** = Human-in-the-loop approval required
+
 ## Configuration
 
 All settings in `.env`:
 
 ```bash
-ANTHROPIC_API_KEY=        # Required
+# ── Authentication ─────────────────────────────────
+AUTH_MODE=session_key                # or "api_key"
+
+# If AUTH_MODE=api_key
+ANTHROPIC_API_KEY=sk-ant-...         # From console.anthropic.com
+
+# If AUTH_MODE=session_key
+CLAUDE_SESSION_KEY=sk-ant-sid01-...  # From claude.ai cookies
+
+# ── Agent Models ───────────────────────────────────
 COMMANDER_MODEL=claude-opus-4-5      # Smart routing
 SPECIALIST_MODEL=claude-sonnet-4-5   # Fast execution
+
+# ── Budget & Safety ────────────────────────────────
 MAX_TOKENS_PER_RUN=8000              # Per-task limit
-MAX_TOKENS_PER_SESSION=100000        # Daily budget
+MAX_TOKENS_PER_SESSION=100000        # Session budget
 MAX_AGENT_TURNS=10                   # Prevents loops
 HITL_REQUIRED_ACTIONS=file_delete,git_push,shell_exec
 ```

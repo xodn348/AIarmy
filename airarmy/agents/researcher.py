@@ -32,7 +32,14 @@ class ResearcherAgent(BaseAgent):
     role = "Research Analyst"
     model = config.SPECIALIST_MODEL
     system_prompt = RESEARCHER_SYSTEM
-    allowed_tools = ["web_search", "file_read"]
+    allowed_tools = [
+        "file_read",
+        "web_search",
+        "web_fetch",
+        "glob_search",
+        "grep_search",
+        "directory_list",
+    ]
 
     def describe(self) -> str:
         return "Researches topics, analyzes documents, synthesizes findings."

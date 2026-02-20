@@ -31,7 +31,16 @@ class AnalystAgent(BaseAgent):
     role = "Data & Business Analyst"
     model = config.SPECIALIST_MODEL
     system_prompt = ANALYST_SYSTEM
-    allowed_tools = ["file_read", "web_search"]
+    allowed_tools = [
+        "file_read",
+        "web_search",
+        "web_fetch",
+        "glob_search",
+        "grep_search",
+        "directory_list",
+        "shell_exec",
+        "env_read",
+    ]
 
     def describe(self) -> str:
         return "Analyzes data, builds business insights, evaluates metrics and ROI."

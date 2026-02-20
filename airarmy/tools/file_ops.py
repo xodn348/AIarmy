@@ -16,13 +16,34 @@ def _write_file(path: str, content: str) -> str:
     return f"Written: {p}"
 
 
-register(Tool(name="file_read", description="Read a file from disk", fn=_read_file))
+register(
+    Tool(
+        name="file_read",
+        description="Read a file from disk",
+        fn=_read_file,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "File path to read"}
+            },
+            "required": ["path"],
+        },
+    )
+)
 register(
     Tool(
         name="file_write",
         description="Write content to a file",
         fn=_write_file,
         requires_hitl=True,
+        input_schema={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "content": {"type": "string"},
+            },
+            "required": ["path", "content"],
+        },
     )
 )
 register(
@@ -31,5 +52,10 @@ register(
         description="Delete a file",
         fn=lambda path: Path(path).unlink(),
         requires_hitl=True,
+        input_schema={
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+        },
     )
 )

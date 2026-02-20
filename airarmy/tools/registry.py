@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Any
 
 
@@ -8,6 +8,16 @@ class Tool:
     description: str
     fn: Callable[..., Any]
     requires_hitl: bool = False
+    input_schema: dict[str, Any] = field(
+        default_factory=lambda: {"type": "object", "properties": {}}
+    )
+
+    def to_anthropic_schema(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self.input_schema,
+        }
 
 
 _registry: dict[str, Tool] = {}
@@ -23,6 +33,14 @@ def get(name: str) -> Tool | None:
 
 def list_tools() -> list[str]:
     return list(_registry.keys())
+
+
+def get_tools_for_agent(allowed_tools: list[str]) -> list[dict[str, Any]]:
+    return [
+        tool.to_anthropic_schema()
+        for tool_name in allowed_tools
+        if (tool := _registry.get(tool_name)) is not None
+    ]
 
 
 def call(name: str, agent_allowed_tools: list[str], **kwargs: Any) -> Any:

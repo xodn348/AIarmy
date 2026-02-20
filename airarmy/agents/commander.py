@@ -62,19 +62,34 @@ class CommanderAgent(BaseAgent):
         self._roster[agent.name] = agent
 
     def route(self, user_input: str) -> tuple[str, str, str]:
-        import anthropic
+        if self._client:
+            import anthropic
 
-        resp = self._client.messages.create(
-            model=config.SPECIALIST_MODEL,
-            max_tokens=300,
-            system=ROUTING_SYSTEM,
-            messages=[{"role": "user", "content": user_input}],
-        )
-        tokens = resp.usage.input_tokens + resp.usage.output_tokens
-        self.budget.record(tokens)
+            resp = self._client.messages.create(
+                model=config.SPECIALIST_MODEL,
+                max_tokens=300,
+                system=ROUTING_SYSTEM,
+                messages=[{"role": "user", "content": user_input}],
+            )
+            tokens = resp.usage.input_tokens + resp.usage.output_tokens
+            self.budget.record(tokens)
 
-        text_blocks = [b for b in resp.content if b.type == "text"]
-        raw = text_blocks[0].text.strip() if text_blocks else "{}"
+            text_blocks = [b for b in resp.content if b.type == "text"]
+            raw = text_blocks[0].text.strip() if text_blocks else "{}"
+
+        elif self._session_client:
+            raw, tokens = self._session_client.send_message(
+                prompt=user_input,
+                model=config.SPECIALIST_MODEL,
+                max_tokens=300,
+                system=ROUTING_SYSTEM,
+            )
+            self.budget.record(tokens)
+            raw = raw.strip()
+
+        else:
+            return "commander", user_input, "fallback: no client configured"
+
         try:
             data = json.loads(raw)
             return data["agent"], data["task"], data["reason"]
