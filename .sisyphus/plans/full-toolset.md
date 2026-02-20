@@ -73,7 +73,7 @@ Enable AIarmy agents to autonomously execute development tasks using tools, matc
 
 ### Agent-Executed QA Scenarios (MANDATORY)
 
-All verification via CLI interaction with `airarmy`.
+All verification via CLI interaction with `aiarmy`.
 
 ---
 
@@ -176,11 +176,11 @@ Wave 3 (Sequential - after Wave 2):
   **References**:
 
   **Pattern References**:
-  - `airarmy/agents/base.py:50-119` - Current run() method to modify (single LLM call, security validation, budget check, audit log)
-  - `airarmy/tools/registry.py:1-37` - Tool dataclass and registry.call() function to extend with schema generation
-  - `airarmy/core/security.py:35-73` - requires_hitl() and request_human_approval() — integrate into tool loop
-  - `airarmy/core/budget.py` - check_run_budget() — call per iteration to enforce limits
-  - `airarmy/core/audit.py` - log_action() — log each tool call individually
+  - `aiarmy/agents/base.py:50-119` - Current run() method to modify (single LLM call, security validation, budget check, audit log)
+  - `aiarmy/tools/registry.py:1-37` - Tool dataclass and registry.call() function to extend with schema generation
+  - `aiarmy/core/security.py:35-73` - requires_hitl() and request_human_approval() — integrate into tool loop
+  - `aiarmy/core/budget.py` - check_run_budget() — call per iteration to enforce limits
+  - `aiarmy/core/audit.py` - log_action() — log each tool call individually
 
   **API References**:
   - Anthropic Tool Use docs: https://docs.anthropic.com/en/docs/build-with-claude/tool-use
@@ -194,9 +194,9 @@ Wave 3 (Sequential - after Wave 2):
     Tool: Bash
     Steps:
       1. Set AUTH_MODE=api_key in .env with valid key (or session_key)
-      2. Run: python -c "from airarmy.tools.registry import get_tools_for_agent; print(get_tools_for_agent(['file_read']))"
+      2. Run: python -c "from aiarmy.tools.registry import get_tools_for_agent; print(get_tools_for_agent(['file_read']))"
       3. Assert: Returns list with one tool schema dict containing name, description, input_schema
-      4. Run: airarmy ask "read the file README.md"
+      4. Run: aiarmy ask "read the file README.md"
       5. Assert: Developer agent calls file_read tool and returns file contents
       6. Check audit.db: SELECT * FROM audit_log WHERE action_type='tool_call'
       7. Assert: Tool call entry exists with agent, action, result
@@ -206,7 +206,7 @@ Wave 3 (Sequential - after Wave 2):
 
   **Commit**: YES
   - Message: `feat(core): add agent tool execution loop with Anthropic Tool Use API`
-  - Files: `airarmy/agents/base.py`, `airarmy/tools/registry.py`
+  - Files: `aiarmy/agents/base.py`, `aiarmy/tools/registry.py`
 
 ---
 
@@ -214,7 +214,7 @@ Wave 3 (Sequential - after Wave 2):
 
   **What to do**:
   
-  Create `airarmy/tools/shell_ops.py`:
+  Create `aiarmy/tools/shell_ops.py`:
   - `shell_exec(command: str, working_dir: str = ".", timeout: int = 30) -> str`
     - Uses `subprocess.run()` with capture_output=True, text=True, timeout
     - Returns stdout + stderr combined
@@ -257,8 +257,8 @@ Wave 3 (Sequential - after Wave 2):
   - **Blocked By**: Task 1
 
   **References**:
-  - `airarmy/tools/file_ops.py:1-36` - Follow this exact registration pattern
-  - `airarmy/tools/registry.py:6-10` - Tool dataclass with requires_hitl flag
+  - `aiarmy/tools/file_ops.py:1-36` - Follow this exact registration pattern
+  - `aiarmy/tools/registry.py:6-10` - Tool dataclass with requires_hitl flag
   - Python docs: subprocess.run() with capture_output, timeout, cwd parameters
 
   **Acceptance Criteria**:
@@ -266,7 +266,7 @@ Wave 3 (Sequential - after Wave 2):
   Scenario: shell_exec runs command and returns output
     Tool: Bash
     Steps:
-      1. python -c "from airarmy.tools.shell_ops import *; from airarmy.tools.registry import call; print(call('shell_exec', ['shell_exec'], command='echo hello'))"
+      1. python -c "from aiarmy.tools.shell_ops import *; from aiarmy.tools.registry import call; print(call('shell_exec', ['shell_exec'], command='echo hello'))"
       2. Assert: output contains "hello"
       3. Test timeout: call('shell_exec', ['shell_exec'], command='sleep 100', timeout=2)
       4. Assert: Returns timeout error message
@@ -281,7 +281,7 @@ Wave 3 (Sequential - after Wave 2):
 
   **What to do**:
   
-  Create `airarmy/tools/git_ops.py` with 6 tools (all using subprocess, NOT GitPython — no new deps):
+  Create `aiarmy/tools/git_ops.py` with 6 tools (all using subprocess, NOT GitPython — no new deps):
   
   - `git_init(path: str = ".") -> str` — `git init` in path
   - `git_status(path: str = ".") -> str` — `git status`
@@ -311,8 +311,8 @@ Wave 3 (Sequential - after Wave 2):
   - **Blocked By**: Task 1
 
   **References**:
-  - `airarmy/tools/file_ops.py:1-36` - Registration pattern
-  - `airarmy/tools/shell_ops.py` (from Task 2) - subprocess pattern to follow
+  - `aiarmy/tools/file_ops.py:1-36` - Registration pattern
+  - `aiarmy/tools/shell_ops.py` (from Task 2) - subprocess pattern to follow
 
   **Acceptance Criteria**:
   ```
@@ -320,7 +320,7 @@ Wave 3 (Sequential - after Wave 2):
     Tool: Bash
     Steps:
       1. Create temp dir, init repo, create file, commit
-      2. python -c "from airarmy.tools.git_ops import *; from airarmy.tools.registry import call; print(call('git_init', ['git_init'], path='/tmp/test-aiarmy-git'))"
+      2. python -c "from aiarmy.tools.git_ops import *; from aiarmy.tools.registry import call; print(call('git_init', ['git_init'], path='/tmp/test-aiarmy-git'))"
       3. Assert: "Initialized" in output
       4. call('git_status', ['git_status'], path='/tmp/test-aiarmy-git')
       5. Assert: status output returned
@@ -335,7 +335,7 @@ Wave 3 (Sequential - after Wave 2):
 
   **What to do**:
   
-  Create `airarmy/tools/web_ops.py`:
+  Create `aiarmy/tools/web_ops.py`:
   
   - `web_fetch(url: str, max_length: int = 10000) -> str`
     - Uses httpx.get() (already in requirements.txt)
@@ -368,7 +368,7 @@ Wave 3 (Sequential - after Wave 2):
   - **Blocked By**: Task 1
 
   **References**:
-  - `airarmy/tools/file_ops.py:1-36` - Registration pattern
+  - `aiarmy/tools/file_ops.py:1-36` - Registration pattern
   - `requirements.txt:5` - httpx already available
   - DuckDuckGo HTML endpoint: `https://html.duckduckgo.com/html/`
 
@@ -377,14 +377,14 @@ Wave 3 (Sequential - after Wave 2):
   Scenario: web_fetch retrieves URL content
     Tool: Bash
     Steps:
-      1. python -c "from airarmy.tools.web_ops import *; from airarmy.tools.registry import call; r = call('web_fetch', ['web_fetch'], url='https://httpbin.org/get'); print(r[:200])"
+      1. python -c "from aiarmy.tools.web_ops import *; from aiarmy.tools.registry import call; r = call('web_fetch', ['web_fetch'], url='https://httpbin.org/get'); print(r[:200])"
       2. Assert: Contains JSON response from httpbin
     Expected Result: URL content retrieved and truncated
 
   Scenario: web_search returns results
     Tool: Bash
     Steps:
-      1. python -c "from airarmy.tools.web_ops import *; from airarmy.tools.registry import call; print(call('web_search', ['web_search'], query='python programming'))"
+      1. python -c "from aiarmy.tools.web_ops import *; from aiarmy.tools.registry import call; print(call('web_search', ['web_search'], query='python programming'))"
       2. Assert: Contains search results with titles and URLs
     Expected Result: Search results returned
   ```
@@ -397,7 +397,7 @@ Wave 3 (Sequential - after Wave 2):
 
   **What to do**:
   
-  Create `airarmy/tools/search_ops.py`:
+  Create `aiarmy/tools/search_ops.py`:
   
   - `glob_search(pattern: str, path: str = ".") -> str`
     - Uses pathlib.Path(path).glob(pattern)
@@ -409,7 +409,7 @@ Wave 3 (Sequential - after Wave 2):
     - Falls back to Python re module if grep not available
     - Returns matching lines (max 50)
   
-  Create `airarmy/tools/system_ops.py`:
+  Create `aiarmy/tools/system_ops.py`:
   
   - `file_rename(old_path: str, new_path: str) -> str`
     - pathlib.Path(old_path).rename(new_path)
@@ -443,7 +443,7 @@ Wave 3 (Sequential - after Wave 2):
   - **Blocked By**: Task 1
 
   **References**:
-  - `airarmy/tools/file_ops.py:1-36` - Registration pattern
+  - `aiarmy/tools/file_ops.py:1-36` - Registration pattern
   - Python pathlib.Path.glob() docs
   - Python subprocess for grep
 
@@ -452,7 +452,7 @@ Wave 3 (Sequential - after Wave 2):
   Scenario: glob_search finds files
     Tool: Bash
     Steps:
-      1. python -c "from airarmy.tools.search_ops import *; from airarmy.tools.registry import call; print(call('glob_search', ['glob_search'], pattern='**/*.py', path='/Users/jnnj92/AIarmy/airarmy'))"
+      1. python -c "from aiarmy.tools.search_ops import *; from aiarmy.tools.registry import call; print(call('glob_search', ['glob_search'], pattern='**/*.py', path='/Users/jnnj92/AIarmy/aiarmy'))"
       2. Assert: Contains list of .py files
     Expected Result: File paths returned
 
@@ -509,19 +509,19 @@ Wave 3 (Sequential - after Wave 2):
   - **Blocked By**: Tasks 2,3,4,5
 
   **References**:
-  - `airarmy/agents/developer.py:35` - Current allowed_tools
-  - `airarmy/agents/researcher.py` - Current allowed_tools
-  - `airarmy/agents/writer.py` - Current allowed_tools
-  - `airarmy/agents/analyst.py` - Current allowed_tools
-  - `airarmy/tools/__init__.py` - Currently empty, needs imports
-  - `airarmy/core/config.py` - HITL_REQUIRED_ACTIONS default
+  - `aiarmy/agents/developer.py:35` - Current allowed_tools
+  - `aiarmy/agents/researcher.py` - Current allowed_tools
+  - `aiarmy/agents/writer.py` - Current allowed_tools
+  - `aiarmy/agents/analyst.py` - Current allowed_tools
+  - `aiarmy/tools/__init__.py` - Currently empty, needs imports
+  - `aiarmy/core/config.py` - HITL_REQUIRED_ACTIONS default
 
   **Acceptance Criteria**:
   ```
   Scenario: All tools registered on import
     Tool: Bash
     Steps:
-      1. python -c "import airarmy.tools; from airarmy.tools.registry import list_tools; print(sorted(list_tools()))"
+      1. python -c "import aiarmy.tools; from aiarmy.tools.registry import list_tools; print(sorted(list_tools()))"
       2. Assert: Lists 18+ tools (file_read, file_write, file_delete, shell_exec, git_init, git_status, git_diff, git_commit, git_push, git_clone, web_search, web_fetch, glob_search, grep_search, file_rename, directory_list, package_install, env_read)
     Expected Result: All tools registered
   ```
@@ -538,7 +538,7 @@ Wave 3 (Sequential - after Wave 2):
   
   Run the full AIarmy CLI and test each capability:
   
-  1. Start `airarmy` in interactive mode
+  1. Start `aiarmy` in interactive mode
   2. Test Developer: "list all Python files in this project"
      → Should use glob_search, return file list
   3. Test Developer: "show me the git status"
@@ -564,9 +564,9 @@ Wave 3 (Sequential - after Wave 2):
   Scenario: Full end-to-end tool usage
     Tool: Bash
     Steps:
-      1. Run: airarmy ask "list all .py files in this project"
+      1. Run: aiarmy ask "list all .py files in this project"
       2. Assert: Returns list of Python files (used glob_search tool)
-      3. Run: airarmy ask "what is the git status of this project"
+      3. Run: aiarmy ask "what is the git status of this project"
       4. Assert: Returns git status output
       5. sqlite3 logs/audit.db "SELECT action_type, action FROM audit_log ORDER BY ts DESC LIMIT 10"
       6. Assert: Contains tool_call entries
@@ -594,11 +594,11 @@ Wave 3 (Sequential - after Wave 2):
 ### Verification Commands
 ```bash
 # All tools registered
-python -c "import airarmy.tools; from airarmy.tools.registry import list_tools; print(len(list_tools()), 'tools:', sorted(list_tools()))"
+python -c "import aiarmy.tools; from aiarmy.tools.registry import list_tools; print(len(list_tools()), 'tools:', sorted(list_tools()))"
 # Expected: 18+ tools listed
 
 # Agent can use tools
-airarmy ask "list all .py files in the airarmy directory"
+aiarmy ask "list all .py files in the aiarmy directory"
 # Expected: Returns file list via glob_search
 
 # Audit log captures tool calls

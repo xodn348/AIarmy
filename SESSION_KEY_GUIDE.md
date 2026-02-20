@@ -88,7 +88,7 @@ MAX_TOKENS_PER_SESSION=100000
 
 ```bash
 cd /Users/jnnj92/AIarmy
-airarmy
+aiarmy
 ```
 
 ### 첫 실행 시 나타나는 것

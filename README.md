@@ -60,7 +60,7 @@ cp .env.example .env
 # 3. Copy value of "sessionKey" cookie (sk-ant-sid01-...)
 
 # 3. Launch
-airarmy
+aiarmy
 ```
 
 ### Option 2: Official API Key (Pay-as-you-go)
@@ -78,19 +78,19 @@ cp .env.example .env
 #   ANTHROPIC_API_KEY=<key from console.anthropic.com>
 
 # 3. Launch
-airarmy
+aiarmy
 ```
 
 ### Usage
 
 ```bash
 # Interactive mode
-airarmy
+aiarmy
 
 # Single tasks
-airarmy ask "Write a Python function to parse JSON safely"
-airarmy ask "Research the latest MCP protocol updates"
-airarmy ask "Review this code for security issues: <paste code>"
+aiarmy ask "Write a Python function to parse JSON safely"
+aiarmy ask "Research the latest MCP protocol updates"
+aiarmy ask "Review this code for security issues: <paste code>"
 ```
 
 ## Commands
@@ -194,7 +194,7 @@ Core Layer (every agent runs through this):
 
 ```
 AIarmy/
-├── airarmy/
+├── aiarmy/
 │   ├── agents/
 │   │   ├── base.py         # Base agent (security + budget baked in)
 │   │   ├── commander.py    # Orchestrator with LLM-based routing
