@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import uuid
 import sys
+import uuid
+from datetime import UTC, datetime
 
 import click
 from rich.console import Console
@@ -14,6 +15,7 @@ from .core.config import config
 from .core.memory import SessionMemory
 from .core.budget import BudgetTracker
 from .core.audit import get_session_logs
+from .core.session_manager import SessionManager
 from .agents.commander import CommanderAgent
 from .agents.developer import DeveloperAgent
 from .agents.researcher import ResearcherAgent
@@ -58,10 +60,11 @@ def build_army(
 
 
 @click.group(invoke_without_command=True)
+@click.option("--new-session", is_flag=True, help="Start a new interactive session")
 @click.pass_context
-def main(ctx: click.Context) -> None:
+def main(ctx: click.Context, new_session: bool) -> None:
     if ctx.invoked_subcommand is None:
-        _run_interactive()
+        _run_interactive(force_new=new_session)
 
 
 @main.command()
@@ -80,6 +83,32 @@ def team() -> None:
 def logs() -> None:
     session_id = "cli-single"
     _show_logs(session_id)
+
+
+@main.command()
+def sessions() -> None:
+    session_manager = SessionManager()
+    all_sessions = session_manager.list_sessions()
+
+    if not all_sessions:
+        console.print("[dim]No saved sessions found.[/dim]")
+        return
+
+    table = Table(title="💾 Saved Sessions", border_style="cyan")
+    table.add_column("Session ID", style="bold cyan")
+    table.add_column("Messages", justify="right")
+    table.add_column("Tokens", justify="right")
+    table.add_column("Last Updated", style="dim")
+
+    for session in all_sessions[:10]:
+        table.add_row(
+            session["session_id"],
+            str(session["message_count"]),
+            f"{session['token_count']:,}",
+            session["last_updated"][:19],
+        )
+
+    console.print(table)
 
 
 def _show_team() -> None:
@@ -156,6 +185,8 @@ def _run_single(task: str) -> None:
     session_id = f"single-{uuid.uuid4().hex[:8]}"
     budget = BudgetTracker(session_id=session_id)
     memory = SessionMemory(session_id=session_id)
+    memory.set_context("created_at", datetime.now(UTC).isoformat())
+    session_manager = SessionManager()
     army = build_army(session_id, budget, memory)
 
     with console.status("[bold cyan]Working...[/bold cyan]"):
@@ -166,10 +197,22 @@ def _run_single(task: str) -> None:
     else:
         console.print(f"[red]Failed: {result.content}[/red]")
 
+    session_manager.save_session(
+        session_id=session_id,
+        memory=memory,
+        state={
+            "created_at": memory.context.get(
+                "created_at", datetime.now(UTC).isoformat()
+            ),
+            "tokens_used": budget.tokens_used,
+            "runs": budget.runs,
+        },
+    )
+
     console.print(f"\n[dim]Tokens used: {budget.summary()}[/dim]")
 
 
-def _run_interactive() -> None:
+def _run_interactive(force_new: bool = False) -> None:
     try:
         config.validate()
     except ValueError as e:
@@ -178,12 +221,48 @@ def _run_interactive() -> None:
 
     console.print(BANNER)
 
-    session_id = f"session-{uuid.uuid4().hex[:8]}"
-    budget = BudgetTracker(session_id=session_id)
-    memory = SessionMemory(session_id=session_id)
-    army = build_army(session_id, budget, memory)
+    session_manager = SessionManager()
 
-    console.print(f"[dim]Session: {session_id}[/dim]\n")
+    if not force_new:
+        last_session_id = session_manager.get_last_session()
+        if last_session_id:
+            try:
+                loaded = session_manager.load_session(last_session_id)
+                if loaded is None:
+                    raise FileNotFoundError("Session not found")
+
+                memory, state = loaded
+                budget = BudgetTracker(
+                    session_id=last_session_id,
+                    tokens_used=state.get("tokens_used", 0),
+                )
+                budget.runs = state.get("runs", 0)
+                session_id = last_session_id
+                console.print(
+                    f"[dim]📂 Resumed session: {session_id} "
+                    f"({len(memory.messages)} messages, {budget.tokens_used:,} tokens)[/dim]\n"
+                )
+            except Exception as e:
+                console.print(f"[yellow]⚠️  Could not resume session: {e}[/yellow]")
+                session_id = f"session-{uuid.uuid4().hex[:8]}"
+                memory = SessionMemory(session_id=session_id)
+                memory.set_context("created_at", datetime.now(UTC).isoformat())
+                budget = BudgetTracker(session_id=session_id)
+                console.print(f"[dim]✨ Started new session: {session_id}[/dim]\n")
+        else:
+            session_id = f"session-{uuid.uuid4().hex[:8]}"
+            memory = SessionMemory(session_id=session_id)
+            memory.set_context("created_at", datetime.now(UTC).isoformat())
+            budget = BudgetTracker(session_id=session_id)
+            console.print(f"[dim]✨ Started new session: {session_id}[/dim]\n")
+    else:
+        session_id = f"session-{uuid.uuid4().hex[:8]}"
+        memory = SessionMemory(session_id=session_id)
+        memory.set_context("created_at", datetime.now(UTC).isoformat())
+        budget = BudgetTracker(session_id=session_id)
+        console.print(f"[dim]✨ Started new session: {session_id}[/dim]\n")
+
+    army = build_army(session_id, budget, memory)
 
     while True:
         try:
@@ -198,6 +277,17 @@ def _run_interactive() -> None:
         cmd = user_input.lower()
 
         if cmd in ("exit", "quit", "bye"):
+            session_manager.save_session(
+                session_id=session_id,
+                memory=memory,
+                state={
+                    "created_at": memory.context.get(
+                        "created_at", datetime.now(UTC).isoformat()
+                    ),
+                    "tokens_used": budget.tokens_used,
+                    "runs": budget.runs,
+                },
+            )
             console.print(f"\n[dim]Session ended. {budget.summary()}[/dim]")
             break
         elif cmd == "help":
@@ -227,3 +317,15 @@ def _run_interactive() -> None:
                 console.print(f"[red]{result.content}[/red]")
 
             console.print(f"[dim]Budget: {budget.summary()}[/dim]")
+
+        session_manager.save_session(
+            session_id=session_id,
+            memory=memory,
+            state={
+                "created_at": memory.context.get(
+                    "created_at", datetime.now(UTC).isoformat()
+                ),
+                "tokens_used": budget.tokens_used,
+                "runs": budget.runs,
+            },
+        )

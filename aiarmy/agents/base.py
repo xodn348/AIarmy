@@ -11,6 +11,7 @@ from ..core.config import config
 from ..core.memory import SessionMemory
 from ..core.budget import BudgetTracker
 from ..core.audit import log_action
+from ..core.compactor import ContextCompactor
 from ..core.security import (
     SecurityError,
     request_human_approval,
@@ -53,6 +54,11 @@ class BaseAgent(ABC):
         else:
             raise ValueError(f"Invalid AUTH_MODE: {config.AUTH_MODE}")
 
+        if self._client:
+            self.compactor = ContextCompactor(self._client, threshold_tokens=15000)
+        else:
+            self.compactor = None
+
     def run(self, task: str, context: str = "") -> AgentResult:
         try:
             safe_task = validate_input(task)
@@ -67,15 +73,19 @@ class BaseAgent(ABC):
             )
             return AgentResult(success=False, content=f"[Security] {e}")
 
+        if self.compactor and self.compactor.should_compact(self.memory):
+            self.compactor.compact(self.memory)
+
         self.budget.check_run_budget()
         prompt = self._build_prompt(safe_task, context)
         tools = get_tools_for_agent(self.allowed_tools)
+        system_prompt_with_context = self._build_system_prompt_with_context()
 
-        raw_messages = self.memory.to_api_format()
+        raw_messages = self.memory.get_llm_context(max_messages=20)
         messages: list[dict[str, Any]] = [
             {
-                "role": cast(Literal["user", "assistant"], m["role"]),
-                "content": m["content"],
+                "role": cast(Literal["user", "assistant"], m.role),
+                "content": m.content,
             }
             for m in raw_messages
         ]
@@ -89,7 +99,7 @@ class BaseAgent(ABC):
                 request_params: dict[str, Any] = {
                     "model": self.model,
                     "max_tokens": config.MAX_TOKENS_PER_RUN,
-                    "system": self.system_prompt,
+                    "system": system_prompt_with_context,
                     "messages": messages,
                 }
                 if tools:
@@ -181,7 +191,7 @@ class BaseAgent(ABC):
                     request_params = {
                         "model": self.model,
                         "max_tokens": config.MAX_TOKENS_PER_RUN,
-                        "system": self.system_prompt,
+                        "system": system_prompt_with_context,
                         "messages": messages,
                     }
                     if tools:
@@ -200,13 +210,13 @@ class BaseAgent(ABC):
                     output = "Stopped after reaching max tool-use turns."
 
             elif self._session_client:
-                system_prompt = self.system_prompt
+                system_prompt = system_prompt_with_context
                 if tools:
                     tool_lines = [
                         f"- {tool['name']}: {tool['description']}" for tool in tools
                     ]
                     system_prompt = (
-                        f"{self.system_prompt}\n\n"
+                        f"{system_prompt}\n\n"
                         "Available tools (descriptions only; no native tool execution in "
                         "session mode):\n" + "\n".join(tool_lines)
                     )
@@ -228,7 +238,6 @@ class BaseAgent(ABC):
 
         self.memory.add("user", prompt)
         self.memory.add("assistant", output)
-        self.memory.trim_to_last_n(20)
 
         self.budget.record(total_tokens)
 
@@ -248,6 +257,27 @@ class BaseAgent(ABC):
         if context:
             return f"Context:\n{context}\n\nTask:\n{task}"
         return task
+
+    def _build_system_prompt_with_context(self) -> str:
+        system_prompt = self.system_prompt
+        summary = self.memory.working_set.get("summary", "")
+        if not summary:
+            return system_prompt
+
+        facts = self.memory.working_set.get("pinned_facts", [])[:10]
+        decisions = self.memory.working_set.get("decisions", [])[:10]
+        facts_lines = "\n".join(f"- {fact}" for fact in facts)
+        decision_lines = "\n".join(f"- {decision}" for decision in decisions)
+
+        working_set_context = (
+            "\n\n## Context from Previous Conversation:\n"
+            f"{summary}\n\n"
+            "### Key Facts:\n"
+            f"{facts_lines}\n\n"
+            "### Decisions Made:\n"
+            f"{decision_lines}"
+        )
+        return system_prompt + working_set_context
 
     @abstractmethod
     def describe(self) -> str:

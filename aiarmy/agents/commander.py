@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 from rich.console import Console
-from rich.panel import Panel
 
 from ..core.config import config
 from ..core.memory import SessionMemory
@@ -63,8 +62,6 @@ class CommanderAgent(BaseAgent):
 
     def route(self, user_input: str) -> tuple[str, str, str]:
         if self._client:
-            import anthropic
-
             resp = self._client.messages.create(
                 model=config.SPECIALIST_MODEL,
                 max_tokens=300,
@@ -97,6 +94,9 @@ class CommanderAgent(BaseAgent):
             return "commander", user_input, "fallback: could not parse routing"
 
     def dispatch(self, user_input: str) -> AgentResult:
+        if self.compactor and self.compactor.should_compact(self.memory):
+            self.compactor.compact(self.memory)
+
         agent_name, task, reason = self.route(user_input)
 
         console.print(f"\n[dim]→ Routing to [bold]{agent_name}[/bold]: {reason}[/dim]")
